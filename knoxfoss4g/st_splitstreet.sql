@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION gcmaster.gc_splitstreet(streetgid integer, splitpoint geometry) RETURNS text AS
+CREATE OR REPLACE FUNCTION foss4g.st_splitstreet(streetgid integer, splitpoint geometry) RETURNS text AS
 $$
 DECLARE
     result text := '';
@@ -17,7 +17,7 @@ DECLARE
 BEGIN
     IF st_geometrytype(splitpoint) = 'ST_Point' THEN--make sure the geometry is a point
       --get the values for the street with the requested gid - point should not be within a distance of the end of the line from call - check for completeness in case called outside of the new streets workflow?
-       select * into street from gcmaster.streets where gid = streetgid;
+       select * into street from foss4g.streets where gid = streetgid;
        splitpoint := st_closestpoint(street.geom, st_setsrid(splitpoint, 4326)); --convert the splitpoint to the closest point on the line
        geom1 := st_multi(st_geometryn(st_split(st_snap(street.geom, splitpoint, .000001), splitpoint), 1)); --first portion of split geometry
        geom2 := st_multi(st_geometryn(st_split(st_snap(street.geom, splitpoint, .000001), splitpoint), 2)); --second portion of split geometry
@@ -94,16 +94,16 @@ BEGIN
           result := 'OK REVERSE DIRECTION ' || street.streetname || ' left first:' || lf || '-' || new_lt || ' left second: ' || new_lf || '-' || lt || ' right first: ' || rf || '-' || new_rt || ' right second: ' || new_rf || '-' || rt || ' ' || interpolate::text;
 
           END IF;
-          INSERT INTO gcmaster.streets
+          INSERT INTO foss4g.streets
         (cfcc, l_f_add, l_t_add, r_f_add, r_t_add, prefix, name, type, suffix, placename, countyname, geom, strplace, streetname)
           VALUES
         (street.cfcc, lf, new_lt, rf, new_rt, street.prefix, street.name, street.type, street.suffix, street.placename, street.countyname, geom1, street.strplace, street.streetname);
 
-          INSERT INTO gcmaster.streets
+          INSERT INTO foss4g.streets
         (cfcc, l_f_add, l_t_add, r_f_add, r_t_add, prefix, name, type, suffix, placename, countyname, geom, strplace, streetname)
           VALUES
         (street.cfcc, new_lf, lt, new_rf, rt, street.prefix, street.name, street.type, street.suffix, street.placename, street.countyname, geom2, street.strplace, street.streetname);
-      DELETE FROM gcmaster.streets where gid = streetgid;
+      DELETE FROM foss4g.streets where gid = streetgid;
        else
           result := 'mixed parity street address ranges for gid ' || streetgid;
        end if;   
